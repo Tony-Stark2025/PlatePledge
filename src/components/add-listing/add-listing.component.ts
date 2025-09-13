@@ -1,4 +1,3 @@
-
 import { Component, ChangeDetectionStrategy, output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
@@ -7,13 +6,13 @@ import { GeminiService, ParsedListing } from '../../services/gemini.service';
 
 @Component({
   selector: 'app-add-listing',
+  standalone: true, // Mark as standalone
   templateUrl: './add-listing.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
 })
 export class AddListingComponent {
   closeModal = output<void>();
-  // FIX: The output should emit the partial listing data, as the service will handle completing the object.
   listingAdded = output<Omit<FoodListing, 'id' | 'claimed' | 'latitude' | 'longitude'>>();
 
   private geminiService = inject(GeminiService);
@@ -71,14 +70,13 @@ export class AddListingComponent {
 
   onSubmit(form: NgForm): void {
     if (form.valid) {
-      // FIX: The created object should not include properties that are handled by the service (`id`, `claimed`, `latitude`, `longitude`).
       const newListing: Omit<FoodListing, 'id' | 'claimed' | 'latitude' | 'longitude'> = {
         donorName: form.value.donorName,
         foodType: form.value.foodType,
         description: form.value.description,
         quantity: form.value.quantity,
         pickupLocation: form.value.pickupLocation,
-        imageUrl: this.selectedImage() || '', // Use selected image or let service handle it
+        imageUrl: this.selectedImage() || '', 
       };
       this.listingAdded.emit(newListing);
     }

@@ -1,4 +1,9 @@
-<div class="min-h-screen bg-gray-50 text-gray-800">
+<!-- Onboarding Component -->
+@if (showOnboarding()) {
+  <app-onboarding (share)="handleShare()" (receive)="handleReceive()"></app-onboarding>
+}
+
+<div class="min-h-screen bg-gray-50 text-gray-800" [class.hidden]="showOnboarding()">
   <app-header (loginRequest)="openLoginModal()"></app-header>
 
   <main class="p-4 sm:p-6 lg:p-8">
@@ -38,6 +43,6 @@
 
   <!-- Login Modal -->
   @if(isLoggingIn()){
-    <app-login (closeModal)="closeLoginModal()"></app-login>
+    <app-login [role]="userRole()" (closeModal)="closeLoginModal()"></app-login>
   }
 </div>

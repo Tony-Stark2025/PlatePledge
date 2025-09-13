@@ -1,0 +1,18 @@
+<div class="onboarding-container">
+  <div class="onboarding-content">
+    <h1 class="welcome-title">Welcome to PlatePledge</h1>
+    <p class="welcome-subtitle">Reduce food waste. Fight hunger.</p>
+    <p class="welcome-text">You can be the connection. Share surplus food, or find what you need.</p>
+    
+    <div class="actions">
+      <button class="btn btn-primary btn-share" (click)="share.emit()">
+        <span class="btn-icon">🎁</span>
+        I want to SHARE food
+      </button>
+      <button class="btn btn-secondary btn-receive" (click)="receive.emit()">
+        <span class="btn-icon">🍽️</span>
+        I need to RECEIVE food
+      </button>
+    </div>
+  </div>
+</div>

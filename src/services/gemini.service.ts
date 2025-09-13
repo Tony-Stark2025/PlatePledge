@@ -1,10 +1,6 @@
-
 import { Injectable } from '@angular/core';
-import { GoogleGenAI, Type } from '@google/genai';
-
-// IMPORTANT: This is a placeholder for the API key.
-// In a real application, this should be handled securely.
-const API_KEY = process.env.API_KEY;
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 export interface ParsedListing {
     foodType: string;
@@ -16,61 +12,42 @@ export interface ParsedListing {
   providedIn: 'root',
 })
 export class GeminiService {
-  private ai: GoogleGenAI | null = null;
+  private backendUrl = 'http://localhost:3000/generate'; // URL of our secure backend
 
-  constructor() {
-    if(API_KEY) {
-      this.ai = new GoogleGenAI({ apiKey: API_KEY });
-    } else {
-      console.error("API_KEY environment variable not set.");
-    }
-  }
+  constructor(private http: HttpClient) {}
 
   async generateListingDetails(description: string): Promise<ParsedListing | null> {
-    if (!this.ai) {
-        console.error("Gemini AI client is not initialized.");
-        return null;
-    }
-
     const prompt = `
       Parse the following food donation description into a structured JSON object.
-      Identify the general category of food, the quantity, and the name of the restaurant or store.
-      
+      The JSON object should conform to this schema: { "foodType": "string", "quantity": "string", "donorName": "string" }.
+      'foodType' should be a general category for the food (e.g., "Baked Goods", "Fresh Produce", "Prepared Meals").
+      'quantity' should be the amount of food available (e.g., "2 boxes", "approx. 10 lbs", "15 meals").
+      'donorName' should be the name of the restaurant, cafe, or store donating the food.
+      Return ONLY the JSON object.
+
       Description: "${description}"
     `;
 
     try {
-      const response = await this.ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              foodType: {
-                type: Type.STRING,
-                description: 'A general category for the food (e.g., "Baked Goods", "Fresh Produce", "Prepared Meals").',
-              },
-              quantity: {
-                type: Type.STRING,
-                description: 'The amount of food available (e.g., "2 boxes", "approx. 10 lbs", "15 meals").',
-              },
-              donorName: {
-                type: Type.STRING,
-                description: 'The name of the restaurant, cafe, or store donating the food.',
-              },
-            },
-            required: ["foodType", "quantity", "donorName"],
-          },
-        },
-      });
+      // Post the prompt to our backend proxy
+      const response$ = this.http.post<{ text: string }>(this.backendUrl, { prompt });
+      const response = await firstValueFrom(response$);
 
-      const jsonString = response.text.trim();
-      return JSON.parse(jsonString) as ParsedListing;
+      // The backend returns a { text: '...' } object. The text is the raw response from Gemini.
+      let responseText = response.text.trim();
+      
+      // Clean the response to ensure it is valid JSON
+      // Gemini can sometimes wrap the JSON in ```json ... ```
+      if (responseText.startsWith('```json')) {
+        responseText = responseText.substring(7, responseText.length - 3).trim();
+      } else if (responseText.startsWith('```')) {
+         responseText = responseText.substring(3, responseText.length - 3).trim();
+      }
+
+      return JSON.parse(responseText) as ParsedListing;
 
     } catch (error) {
-      console.error('Error generating listing details with Gemini:', error);
+      console.error('Error communicating with backend service:', error);
       return null;
     }
   }
