@@ -4,7 +4,8 @@ import { GoogleGenAI, Type } from '@google/genai';
 
 // IMPORTANT: This is a placeholder for the API key.
 // In a real application, this should be handled securely.
-const API_KEY = process.env.API_KEY;
+// For now, we'll use a placeholder to prevent errors
+const API_KEY = 'placeholder_api_key'; // process.env is not available in browser
 
 export interface ParsedListing {
     foodType: string;
