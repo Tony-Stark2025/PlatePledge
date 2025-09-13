@@ -5,8 +5,9 @@ import { FoodListingService } from './services/food-listing.service';
 import { HeaderComponent } from './components/header/header.component';
 import { FoodCardComponent } from './components/food-card/food-card.component';
 import { AddListingComponent } from './components/add-listing/add-listing.component';
-import { FoodListing } from './models/food-listing.model';
+import { SearchFiltersComponent } from './components/search-filters/search-filters.component';
 import { LoginComponent } from './components/login/login.component';
+import { UserProfileComponent } from './components/user-profile/user-profile.component';
 import { AuthService } from './services/auth.service';
 import { LocationService } from './services/location.service';
 
@@ -14,7 +15,7 @@ import { LocationService } from './services/location.service';
   selector: 'app-root',
   templateUrl: './app.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, HeaderComponent, FoodCardComponent, AddListingComponent, LoginComponent],
+  imports: [CommonModule, HeaderComponent, FoodCardComponent, AddListingComponent, SearchFiltersComponent, LoginComponent, UserProfileComponent],
 })
 export class AppComponent implements OnInit {
   foodListingService = inject(FoodListingService);
@@ -23,15 +24,29 @@ export class AppComponent implements OnInit {
 
   listings = this.foodListingService.listings;
   currentUser = this.authService.currentUser;
+  isLoading = this.foodListingService.isLoading;
+  error = this.foodListingService.error;
   
   isAddingListing = signal(false);
   isLoggingIn = signal(false);
+  showProfile = signal(false);
 
   ngOnInit(): void {
     this.locationService.getUserLocation();
   }
 
   openAddListingModal(): void {
+    const user = this.currentUser();
+    if (!user) {
+      this.openLoginModal();
+      return;
+    }
+    
+    if (user.role !== 'donor') {
+      // Show error or redirect - only donors can add listings
+      return;
+    }
+    
     this.isAddingListing.set(true);
   }
 
@@ -47,9 +62,20 @@ export class AppComponent implements OnInit {
     this.isLoggingIn.set(false);
   }
 
-  // FIX: Updated the type of newListing to match the data emitted from the child component and expected by the service.
-  handleListingAdded(newListing: Omit<FoodListing, 'id' | 'claimed' | 'latitude' | 'longitude'>): void {
-    this.foodListingService.addListing(newListing);
+  openProfileModal(): void {
+    this.showProfile.set(true);
+  }
+
+  closeProfileModal(): void {
+    this.showProfile.set(false);
+  }
+
+  handleListingAdded(): void {
     this.closeAddListingModal();
+    // Optional: Show success message
+  }
+
+  clearError(): void {
+    this.foodListingService.clearError();
   }
 }
