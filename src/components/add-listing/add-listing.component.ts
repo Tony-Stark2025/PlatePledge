@@ -2,8 +2,9 @@
 import { Component, ChangeDetectionStrategy, output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, NgForm } from '@angular/forms';
-import { FoodListing } from '../../models/food-listing.model';
-import { GeminiService, ParsedListing } from '../../services/gemini.service';
+import { CreateListingRequest, FoodCategory } from '../../models/food-listing.model';
+import { FoodListingService } from '../../services/food-listing.service';
+import { GeminiService } from '../../services/gemini.service';
 
 @Component({
   selector: 'app-add-listing',
@@ -13,74 +14,146 @@ import { GeminiService, ParsedListing } from '../../services/gemini.service';
 })
 export class AddListingComponent {
   closeModal = output<void>();
-  // FIX: The output should emit the partial listing data, as the service will handle completing the object.
-  listingAdded = output<Omit<FoodListing, 'id' | 'claimed' | 'latitude' | 'longitude'>>();
+  listingAdded = output<void>();
 
   private geminiService = inject(GeminiService);
+  private foodListingService = inject(FoodListingService);
   
-  aiIsThinking = signal(false);
-  aiError = signal<string | null>(null);
+  isSubmitting = signal(false);
+  error = signal<string | null>(null);
   selectedImage = signal<string | null>(null);
 
-  listingModel: Partial<FoodListing> = {
-    donorName: '',
+  foodCategories = [
+    { value: 'prepared-meals' as FoodCategory, label: 'Prepared Meals' },
+    { value: 'bakery' as FoodCategory, label: 'Bakery' },
+    { value: 'produce' as FoodCategory, label: 'Produce' },
+    { value: 'dairy' as FoodCategory, label: 'Dairy' },
+    { value: 'beverages' as FoodCategory, label: 'Beverages' },
+    { value: 'pantry-items' as FoodCategory, label: 'Pantry Items' },
+    { value: 'other' as FoodCategory, label: 'Other' }
+  ];
+
+  listingData: CreateListingRequest = {
     foodType: '',
+    category: 'prepared-meals',
     description: '',
     quantity: '',
-    pickupLocation: ''
+    pickupLocation: '',
+    expiresAt: this.getDefaultExpirationTime(),
+    imageUrl: '',
+    dietaryInfo: {
+      vegetarian: false,
+      vegan: false,
+      glutenFree: false,
+      allergens: []
+    }
   };
+
+  allergenInput = '';
+
+  private getDefaultExpirationTime(): Date {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(18, 0, 0, 0); // Default to 6 PM tomorrow
+    return tomorrow;
+  }
 
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files[0]) {
       const file = input.files[0];
+      
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        this.error.set('Image file must be smaller than 5MB');
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.error.set('Please select a valid image file');
+        return;
+      }
+      
       const reader = new FileReader();
       reader.onload = () => {
         this.selectedImage.set(reader.result as string);
+        this.listingData.imageUrl = reader.result as string;
+        this.error.set(null);
       };
       reader.readAsDataURL(file);
     }
   }
 
-  async generateWithAI(form: NgForm): Promise<void> {
-    const description = form.value.description;
-    if (!description || description.trim().length < 10) {
-      this.aiError.set('Please provide a more detailed description.');
+  addAllergen(): void {
+    const allergen = this.allergenInput.trim().toLowerCase();
+    if (allergen && !this.listingData.dietaryInfo?.allergens?.includes(allergen)) {
+      if (!this.listingData.dietaryInfo) {
+        this.listingData.dietaryInfo = { allergens: [] };
+      }
+      if (!this.listingData.dietaryInfo.allergens) {
+        this.listingData.dietaryInfo.allergens = [];
+      }
+      this.listingData.dietaryInfo.allergens.push(allergen);
+      this.allergenInput = '';
+    }
+  }
+
+  removeAllergen(allergen: string): void {
+    if (this.listingData.dietaryInfo?.allergens) {
+      this.listingData.dietaryInfo.allergens = this.listingData.dietaryInfo.allergens.filter(a => a !== allergen);
+    }
+  }
+
+  formatDateTimeForInput(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  onExpirationChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.value) {
+      this.listingData.expiresAt = new Date(input.value);
+    }
+  }
+
+  async onSubmit(form: NgForm): Promise<void> {
+    if (!form.valid) {
+      this.error.set('Please fill in all required fields');
       return;
     }
 
-    this.aiIsThinking.set(true);
-    this.aiError.set(null);
-
-    const parsedData = await this.geminiService.generateListingDetails(description);
-
-    if (parsedData) {
-      this.updateModel(parsedData, form);
-    } else {
-      this.aiError.set('Could not parse details. Please fill in the fields manually.');
+    // Validate expiration time
+    if (this.listingData.expiresAt <= new Date()) {
+      this.error.set('Expiration time must be in the future');
+      return;
     }
 
-    this.aiIsThinking.set(false);
-  }
-  
-  updateModel(parsedData: ParsedListing, form: NgForm) {
-      form.controls['donorName']?.setValue(parsedData.donorName);
-      form.controls['foodType']?.setValue(parsedData.foodType);
-      form.controls['quantity']?.setValue(parsedData.quantity);
+    this.isSubmitting.set(true);
+    this.error.set(null);
+
+    try {
+      const result = await this.foodListingService.addListing(this.listingData);
+      
+      if (result.success) {
+        this.listingAdded.emit();
+        this.closeModal.emit();
+      } else {
+        this.error.set(result.error || 'Failed to create listing');
+      }
+    } catch (error) {
+      this.error.set('An unexpected error occurred');
+      console.error('Error creating listing:', error);
+    } finally {
+      this.isSubmitting.set(false);
+    }
   }
 
-  onSubmit(form: NgForm): void {
-    if (form.valid) {
-      // FIX: The created object should not include properties that are handled by the service (`id`, `claimed`, `latitude`, `longitude`).
-      const newListing: Omit<FoodListing, 'id' | 'claimed' | 'latitude' | 'longitude'> = {
-        donorName: form.value.donorName,
-        foodType: form.value.foodType,
-        description: form.value.description,
-        quantity: form.value.quantity,
-        pickupLocation: form.value.pickupLocation,
-        imageUrl: this.selectedImage() || '', // Use selected image or let service handle it
-      };
-      this.listingAdded.emit(newListing);
-    }
+  cancel(): void {
+    this.closeModal.emit();
   }
 }

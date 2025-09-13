@@ -14,15 +14,24 @@ import { CommonModule } from '@angular/common';
           </div>
           <div class="flex items-center space-x-4">
             @if (currentUser(); as user) {
-              <div class="flex items-center space-x-2">
-                <i [class]="user.role === 'donor' ? 'ph-fill ph-heart-straight' : 'ph-fill ph-hand-waving'" class="text-2xl text-green-600"></i>
-                <span class="text-sm font-medium text-gray-700">
-                  Welcome, <span class="capitalize">{{ user.role }}</span>
-                </span>
+              <div class="flex items-center space-x-3">
+                <div class="flex items-center space-x-2">
+                  <i [class]="user.role === 'donor' ? 'ph-fill ph-heart-straight' : 'ph-fill ph-hand-waving'" class="text-xl text-green-600"></i>
+                  <div class="text-sm">
+                    <p class="font-medium text-gray-900">{{ user.name }}</p>
+                    <p class="text-xs text-gray-500 capitalize">{{ user.role }}</p>
+                  </div>
+                </div>
+                
+                <!-- Profile dropdown -->
+                <button 
+                  (click)="profileRequest.emit()"
+                  class="p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  title="View Profile"
+                >
+                  <i class="ph ph-user-circle text-2xl text-gray-600"></i>
+                </button>
               </div>
-              <button (click)="authService.logout()" class="p-2 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 text-sm font-medium text-gray-600 hover:text-gray-800">
-                Logout
-              </button>
             } @else {
               <button (click)="loginRequest.emit()" class="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
                 Login / Register
@@ -40,4 +49,5 @@ export class HeaderComponent {
   authService = inject(AuthService);
   currentUser = this.authService.currentUser;
   loginRequest = output<void>();
+  profileRequest = output<void>();
 }

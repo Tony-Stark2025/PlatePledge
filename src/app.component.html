@@ -1,5 +1,5 @@
 <div class="min-h-screen bg-gray-50 text-gray-800">
-  <app-header (loginRequest)="openLoginModal()"></app-header>
+  <app-header (loginRequest)="openLoginModal()" (profileRequest)="openProfileModal()"></app-header>
 
   <main class="p-4 sm:p-6 lg:p-8">
     <div class="max-w-7xl mx-auto">
@@ -7,18 +7,53 @@
         <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Available Surplus Food</h1>
       </div>
 
-      @if (listings().length > 0) {
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          @for (listing of listings(); track listing.id) {
-            <app-food-card [listing]="listing"></app-food-card>
-          }
+      <!-- Search and Filters -->
+      <app-search-filters></app-search-filters>
+
+      <!-- Error Message -->
+      @if (error()) {
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center">
+              <i class="ph ph-warning-circle mr-2"></i>
+              <span>{{ error() }}</span>
+            </div>
+            <button (click)="clearError()" class="text-red-600 hover:text-red-800">
+              <i class="ph ph-x"></i>
+            </button>
+          </div>
+        </div>
+      }
+
+      <!-- Loading State -->
+      @if (isLoading()) {
+        <div class="flex items-center justify-center py-20">
+          <div class="text-center">
+            <i class="ph ph-spinner-gap animate-spin text-4xl text-green-600 mb-4"></i>
+            <p class="text-gray-600">Loading listings...</p>
+          </div>
         </div>
       } @else {
-        <div class="text-center py-20 px-6 bg-white rounded-lg shadow-sm">
-          <i class="ph-light ph-bowl-food text-6xl text-green-400"></i>
-          <h2 class="mt-4 text-2xl font-semibold text-gray-700">No Listings Available</h2>
-          <p class="mt-2 text-gray-500">Check back later or be the first to share surplus food!</p>
-        </div>
+        <!-- Listings Grid -->
+        @if (listings().length > 0) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            @for (listing of listings(); track listing.id) {
+              <app-food-card [listing]="listing"></app-food-card>
+            }
+          </div>
+        } @else {
+          <div class="text-center py-20 px-6 bg-white rounded-lg shadow-sm">
+            <i class="ph-light ph-bowl-food text-6xl text-green-400"></i>
+            <h2 class="mt-4 text-2xl font-semibold text-gray-700">No Listings Found</h2>
+            <p class="mt-2 text-gray-500">
+              @if (currentUser()?.role === 'donor') {
+                Be the first to share surplus food!
+              } @else {
+                Try adjusting your search filters or check back later.
+              }
+            </p>
+          </div>
+        }
       }
     </div>
   </main>
@@ -33,11 +68,16 @@
   
   <!-- Add Listing Modal -->
   @if (isAddingListing()) {
-    <app-add-listing (closeModal)="closeAddListingModal()" (listingAdded)="handleListingAdded($event)"></app-add-listing>
+    <app-add-listing (closeModal)="closeAddListingModal()" (listingAdded)="handleListingAdded()"></app-add-listing>
   }
 
   <!-- Login Modal -->
   @if(isLoggingIn()){
     <app-login (closeModal)="closeLoginModal()"></app-login>
+  }
+
+  <!-- Profile Modal -->
+  @if(showProfile()){
+    <app-user-profile (closeModal)="closeProfileModal()"></app-user-profile>
   }
 </div>

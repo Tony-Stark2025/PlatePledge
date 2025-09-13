@@ -2,45 +2,123 @@
 <div class="bg-white rounded-xl shadow-md overflow-hidden transition-transform transform hover:-translate-y-1 hover:shadow-lg duration-300 flex flex-col">
   <div class="relative">
     <img [ngSrc]="item.imageUrl" class="w-full h-40 object-cover" alt="Photo of {{ item.foodType }}" width="400" height="300" priority>
-    @if (item.claimed) {
+    
+    <!-- Status badges -->
+    @if (item.status === 'claimed') {
       <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
         <span class="text-white text-lg font-bold">CLAIMED</span>
+      </div>
+    } @else if (item.status === 'expired') {
+      <div class="absolute inset-0 bg-red-600 bg-opacity-75 flex items-center justify-center">
+        <span class="text-white text-lg font-bold">EXPIRED</span>
+      </div>
+    }
+    
+    <!-- Category badge -->
+    <div class="absolute top-2 left-2">
+      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white bg-opacity-90 text-gray-800">
+        {{ getCategoryLabel(item.category) }}
+      </span>
+    </div>
+    
+    <!-- Expiration warning -->
+    @if (item.status === 'available' && getTimeUntilExpiration(item.expiresAt) && getTimeUntilExpiration(item.expiresAt)!.urgent) {
+      <div class="absolute top-2 right-2">
+        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+          <i class="ph ph-clock mr-1"></i>
+          {{ getTimeUntilExpiration(item.expiresAt)!.label }}
+        </span>
       </div>
     }
   </div>
 
   <div class="p-4 flex flex-col flex-grow">
     <div class="flex-grow">
-      <div class="uppercase tracking-wide text-sm text-green-600 font-semibold">{{ item.foodType }}</div>
-      <p class="mt-1 block text-lg leading-tight font-medium text-black">{{ item.donorName }}</p>
-      <p class="mt-2 text-gray-500 text-sm">{{ item.description }}</p>
+      <div class="flex items-center justify-between mb-2">
+        <div class="uppercase tracking-wide text-sm text-green-600 font-semibold">{{ item.foodType }}</div>
+        @if (item.distance !== undefined) {
+          <span class="text-xs text-gray-500">{{ item.distance.toFixed(1) }} miles away</span>
+        }
+      </div>
+      
+      <p class="block text-lg leading-tight font-medium text-black mb-2">{{ item.donorName }}</p>
+      <p class="text-gray-500 text-sm mb-3">{{ item.description }}</p>
+      
+      <!-- Dietary info badges -->
+      @if (item.dietaryInfo && hasDietaryInfo(item.dietaryInfo)) {
+        <div class="flex flex-wrap gap-1 mb-3">
+          @if (item.dietaryInfo.vegetarian) {
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <i class="ph ph-leaf mr-1"></i>
+              Vegetarian
+            </span>
+          }
+          @if (item.dietaryInfo.vegan) {
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+              <i class="ph ph-plant mr-1"></i>
+              Vegan
+            </span>
+          }
+          @if (item.dietaryInfo.glutenFree) {
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+              Gluten-Free
+            </span>
+          }
+          @if (item.dietaryInfo.allergens && item.dietaryInfo.allergens.length > 0) {
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+              <i class="ph ph-warning mr-1"></i>
+              Contains {{ item.dietaryInfo.allergens.join(', ') }}
+            </span>
+          }
+        </div>
+      }
     </div>
 
-    <div class="mt-4">
-       <div class="flex items-center text-sm text-gray-600">
+    <div class="space-y-2">
+      <div class="flex items-center text-sm text-gray-600">
         <i class="ph ph-map-pin mr-2 text-lg"></i>
         <span>{{ item.pickupLocation }}</span>
       </div>
-      @if(item.distance !== undefined) {
-         <div class="flex items-center text-sm text-gray-600 mt-1">
-          <i class="ph ph-person-simple-walk mr-2 text-lg"></i>
-          <span>{{ item.distance.toFixed(1) }} km away</span>
-        </div>
-      }
-      <div class="flex items-center text-sm text-gray-600 mt-1">
+      
+      <div class="flex items-center text-sm text-gray-600">
         <i class="ph ph-package mr-2 text-lg"></i>
         <span>{{ item.quantity }}</span>
       </div>
+      
+      @if (item.status === 'available') {
+        <div class="flex items-center text-sm text-gray-600">
+          <i class="ph ph-clock mr-2 text-lg"></i>
+          <span>Available until {{ formatExpirationTime(item.expiresAt) }}</span>
+        </div>
+      } @else if (item.status === 'claimed' && item.claimedAt) {
+        <div class="flex items-center text-sm text-gray-600">
+          <i class="ph ph-check-circle mr-2 text-lg"></i>
+          <span>Claimed {{ formatClaimedTime(item.claimedAt) }}</span>
+        </div>
+      }
     </div>
   </div>
 
   <div class="p-4 bg-gray-50">
-    <div class="relative" [title]="!currentUser() || currentUser()?.role !== 'recipient' ? 'Login as a Recipient to claim food' : ''">
-       <button (click)="claimItem()" 
-        [disabled]="item.claimed || currentUser()?.role !== 'recipient'"
-        [class]="(item.claimed || currentUser()?.role !== 'recipient') ? 'w-full bg-gray-300 text-gray-500 font-bold py-2 px-4 rounded cursor-not-allowed' : 'w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300'">
-        {{ item.claimed ? 'Already Claimed' : 'Claim Now' }}
-      </button>
+    <div class="relative" [title]="getButtonTooltip(item)">
+      @if (item.status === 'available') {
+        <button 
+          (click)="claimItem()" 
+          [disabled]="!canClaim()"
+          [class]="canClaim() ? 
+            'w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300' : 
+            'w-full bg-gray-300 text-gray-500 font-bold py-2 px-4 rounded cursor-not-allowed'"
+        >
+          {{ getButtonText(item) }}
+        </button>
+      } @else {
+        <button 
+          disabled
+          class="w-full bg-gray-300 text-gray-500 font-bold py-2 px-4 rounded cursor-not-allowed"
+        >
+          {{ getButtonText(item) }}
+        </button>
+      }
     </div>
   </div>
 </div>
