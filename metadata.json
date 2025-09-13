@@ -1,0 +1,8 @@
+{
+  "name": "PlatePledge",
+  "description": "An intuitive application connecting surplus food from local restaurants and grocery stores directly to those in need, reducing food waste and fighting hunger.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

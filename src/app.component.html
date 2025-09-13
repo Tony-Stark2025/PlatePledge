@@ -1,0 +1,43 @@
+<div class="min-h-screen bg-gray-50 text-gray-800">
+  <app-header (loginRequest)="openLoginModal()"></app-header>
+
+  <main class="p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Available Surplus Food</h1>
+      </div>
+
+      @if (listings().length > 0) {
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          @for (listing of listings(); track listing.id) {
+            <app-food-card [listing]="listing"></app-food-card>
+          }
+        </div>
+      } @else {
+        <div class="text-center py-20 px-6 bg-white rounded-lg shadow-sm">
+          <i class="ph-light ph-bowl-food text-6xl text-green-400"></i>
+          <h2 class="mt-4 text-2xl font-semibold text-gray-700">No Listings Available</h2>
+          <p class="mt-2 text-gray-500">Check back later or be the first to share surplus food!</p>
+        </div>
+      }
+    </div>
+  </main>
+
+  <!-- Floating Action Button -->
+  @if (currentUser()?.role === 'donor') {
+    <button (click)="openAddListingModal()"
+      class="fixed bottom-6 right-6 bg-green-600 hover:bg-green-700 text-white rounded-full p-4 shadow-lg transition-transform transform hover:scale-110 focus:outline-none focus:ring-4 focus:ring-green-300 z-40">
+      <i class="ph ph-plus text-3xl"></i>
+    </button>
+  }
+  
+  <!-- Add Listing Modal -->
+  @if (isAddingListing()) {
+    <app-add-listing (closeModal)="closeAddListingModal()" (listingAdded)="handleListingAdded($event)"></app-add-listing>
+  }
+
+  <!-- Login Modal -->
+  @if(isLoggingIn()){
+    <app-login (closeModal)="closeLoginModal()"></app-login>
+  }
+</div>

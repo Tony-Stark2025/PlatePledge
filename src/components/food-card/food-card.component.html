@@ -1,0 +1,47 @@
+@if (listing(); as item) {
+<div class="bg-white rounded-xl shadow-md overflow-hidden transition-transform transform hover:-translate-y-1 hover:shadow-lg duration-300 flex flex-col">
+  <div class="relative">
+    <img [ngSrc]="item.imageUrl" class="w-full h-40 object-cover" alt="Photo of {{ item.foodType }}" width="400" height="300" priority>
+    @if (item.claimed) {
+      <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <span class="text-white text-lg font-bold">CLAIMED</span>
+      </div>
+    }
+  </div>
+
+  <div class="p-4 flex flex-col flex-grow">
+    <div class="flex-grow">
+      <div class="uppercase tracking-wide text-sm text-green-600 font-semibold">{{ item.foodType }}</div>
+      <p class="mt-1 block text-lg leading-tight font-medium text-black">{{ item.donorName }}</p>
+      <p class="mt-2 text-gray-500 text-sm">{{ item.description }}</p>
+    </div>
+
+    <div class="mt-4">
+       <div class="flex items-center text-sm text-gray-600">
+        <i class="ph ph-map-pin mr-2 text-lg"></i>
+        <span>{{ item.pickupLocation }}</span>
+      </div>
+      @if(item.distance !== undefined) {
+         <div class="flex items-center text-sm text-gray-600 mt-1">
+          <i class="ph ph-person-simple-walk mr-2 text-lg"></i>
+          <span>{{ item.distance.toFixed(1) }} km away</span>
+        </div>
+      }
+      <div class="flex items-center text-sm text-gray-600 mt-1">
+        <i class="ph ph-package mr-2 text-lg"></i>
+        <span>{{ item.quantity }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="p-4 bg-gray-50">
+    <div class="relative" [title]="!currentUser() || currentUser()?.role !== 'recipient' ? 'Login as a Recipient to claim food' : ''">
+       <button (click)="claimItem()" 
+        [disabled]="item.claimed || currentUser()?.role !== 'recipient'"
+        [class]="(item.claimed || currentUser()?.role !== 'recipient') ? 'w-full bg-gray-300 text-gray-500 font-bold py-2 px-4 rounded cursor-not-allowed' : 'w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300'">
+        {{ item.claimed ? 'Already Claimed' : 'Claim Now' }}
+      </button>
+    </div>
+  </div>
+</div>
+}
